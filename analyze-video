@@ -1,0 +1,39 @@
+from google.cloud import videointelligence_v1 as videointelligence
+
+def analyze_video(video_uri):
+    # Initialize the Video Intelligence API client
+    client = videointelligence.VideoIntelligenceServiceClient()
+
+    # Configure the request
+    features = [videointelligence.Feature.PERSON_DETECTION]
+    request = videointelligence.AnnotateVideoRequest(
+        input_uri=video_uri,
+        features=features,
+        person_detection_config=videointelligence.PersonDetectionConfig(
+            include_bounding_boxes=True,
+            include_pose_landmarks=True,
+            include_attributes=True
+        )
+    )
+
+    # Make the request and get the operation
+    operation = client.annotate_video(request=request)
+
+    print("Processing video for person detection...")
+    result = operation.result(timeout=600)
+
+    # Process the results
+    for annotation in result.annotation_results:
+        for person_detection in annotation.person_detection_annotations:
+            print(f"Person detected with confidence: {person_detection.confidence}")
+
+            for track in person_detection.tracks:
+                for timestamped_object in track.timestamped_objects:
+                    print(f"Timestamp: {timestamped_object.time_offset.seconds + timestamped_object.time_offset.nanos / 1e9} seconds")
+
+                    for keypoint in timestamped_object.pose_landmarks:
+                        print(f" - Landmark {keypoint.name}: (x: {keypoint.x}, y: {keypoint.y}, z: {keypoint.z})")
+
+if __name__ == "__main__":
+    video_uri = "gs://your-bucket-name/your-video-file.mp4"
+    analyze_video(video_uri)
